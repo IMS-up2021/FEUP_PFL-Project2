@@ -21,7 +21,7 @@ createEmptyStack :: Stack
 createEmptyStack = [] 
 
 stack2Str :: Stack -> String
-stack2Str stack = intercalate "," (map show stack) -- TODO, Uncomment all the other function type declarations as you implement them
+stack2Str stack = intercalate "," (map show stack)
 
 createEmptyState :: State
 createEmptyState = []
@@ -31,7 +31,7 @@ state2Str state = intercalate "," [v ++ "=" ++ show n | (v, n) <- sort state]
 
 run :: (Code, Stack, State) -> (Code, Stack, State)
 run ([], stack, state) = ([], stack, state)
---run (Push n:code, stack, state) = run (code, n:stack, state)
+run (Push n:code, stack, state) = run (code, fromInteger n:stack, state)
 run (Add:code, n2:n1:stack, state) = run (code, n1 + n2:stack, state)
 run (Mult:code, n2:n1:stack, state) = run (code, n1 * n2:stack, state)
 run (Sub:code, n2:n1:stack, state) = run (code, n1 - n2:stack, state)
@@ -51,6 +51,7 @@ run (Branch c1 c2:code, 1:stack, state) = run (c1 ++ code, stack, state)
 run (Branch c1 c2:code, 0:stack, state) = run (c2 ++ code, stack, state)
 run (Loop c1 c2:code, stack, state) = run (Branch (c1 ++ [Loop c1 c2]) [Noop]:code, stack, state)
 run (_, _, _) = error "Run-time error"
+
 
 
 -- To help you test your assembler
