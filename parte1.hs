@@ -49,7 +49,7 @@ run (Store x:code, n:stack, state) = run (code, stack, (x, n):state)
 run (Noop:code, stack, state) = run (code, stack, state)
 run (Branch c1 c2:code, 1:stack, state) = run (c1 ++ code, stack, state)
 run (Branch c1 c2:code, 0:stack, state) = run (c2 ++ code, stack, state)
-run (Loop c1 c2:code, stack, state) = run (Branch (c1 ++ [Loop c1 c2]) [Noop]:code, stack, state)
+run (Loop c1 c2:code, stack, state) = run (c1 ++ [Branch c2 [Loop c1 c2]] ++ code, stack, state)
 run (_, _, _) = error "Run-time error"
 
 
