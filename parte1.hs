@@ -4,6 +4,10 @@
 import Data.List
 import System.IO
 
+import Data.Char
+
+
+
 -- Part 1
 
 -- Do not modify our definition of Inst and Code
@@ -18,7 +22,7 @@ type Stack = [Int]
 type State = [(String, Int)]
 
 createEmptyStack :: Stack
-createEmptyStack = [] 
+createEmptyStack = []
 
 stack2Str :: Stack -> String
 stack2Str stack = intercalate "," (map show stack)
@@ -57,7 +61,7 @@ run (_, _, _) = error "Run-time error"
 -- To help you test your assembler
 testAssembler :: Code -> (String, String)
 testAssembler code = (stack2Str stack, state2Str state)
-  where (_,stack,state) = run(code, createEmptyStack, createEmptyState)
+  where (_,stack,state) = run (code, createEmptyStack, createEmptyState)
 
 -- Examples:
 -- testAssembler [Push 10,Push 4,Push 3,Sub,Mult] == ("-10","")
@@ -75,3 +79,168 @@ testAssembler code = (stack2Str stack, state2Str state)
 -- If you test:
 -- testAssembler [Tru,Tru,Store "y", Fetch "x",Tru]
 -- You should get an exception with the string: "Run-time error"
+
+
+
+-- Part 2
+
+-- TODO: Define the types Aexp, Bexp, Stm and Program
+
+data Aexp =
+     CasoBase Integer
+    | CasoBase2 String
+    | Multiplicacao Aexp Aexp
+    | Soma Aexp Aexp
+    | Diferenca Aexp Aexp
+    deriving Show
+
+
+-- le, equal, and, not
+data Bexp =
+    Folha Bool
+    | Igual1 Bexp Bexp
+    | Igual2 Aexp Aexp
+    | And2 Bexp Bexp
+    | Not2 Bexp
+    | LessEqual Aexp Aexp
+    deriving Show
+
+data Stm =
+  Assignment String Aexp
+  | If2 Bexp [Stm] [Stm]
+  | Loop2 Bexp [Stm]
+  | Sequence [Stm]
+  deriving Show
+
+type Program = [Stm]
+
+-- 2 + 3 * 4
+tree = Soma (CasoBase 2) (Multiplicacao (CasoBase 3) (CasoBase 4))
+
+-- True = not True
+arvore = Igual1 (Folha True) (Not2 (Folha True))
+
+compile :: Program -> Code
+compile [] = []
+compile (Assignment var exp : restantesStatement) = compA exp ++ [Store var] ++ compile restantesStatement
+compile (If2 condicao se senao : restantesStatement) = compB condicao ++ [Branch (compile se) (compile senao)] ++ compile restantesStatement
+compile (Loop2 condicao ciclo : restantesStatement) = Loop (compB condicao) (compile ciclo) : compile restantesStatement
+compile (Sequence sequencia : restantesStatement) = compile sequencia ++ compile restantesStatement
+
+
+compB :: Bexp -> Code
+
+compB (Folha True) = [Tru]
+compB (Folha False) = [Fals]
+compB (Igual1 left right) = compB right ++ compB left ++ [Equ]
+compB (Igual2 left right) = compA right ++ compA left ++ [Equ]
+compB (And2 left right) = compB right ++ compB left ++ [And]
+compB (Not2 exp) = compB exp ++ [Neg]
+compB (LessEqual left right) = compA right ++ compA left ++ [Le]
+
+compA :: Aexp -> Code
+
+compA (CasoBase int) = [Push int]
+compA (CasoBase2 var) = [Fetch var]
+compA (Multiplicacao left right) = compA right ++ compA left ++ [Mult]
+compA (Soma left right) = compA right ++ compA left ++ [Add]
+compA (Diferenca left right) = compA right ++ compA left ++ [Sub]
+
+
+compiled = compA tree
+
+test = testAssembler compiled
+
+
+compiled2 = compB arvore
+
+test2 = run (compiled2, createEmptyStack, createEmptyState)
+
+-- y := 1; while ¬(x = 1) do (y := y ∗ x; x := x − 1)
+
+l = [Assignment "y" (CasoBase 1),Loop2 (Not2 (Igual2 (CasoBase2 "x") (CasoBase 1))) [Assignment "y" (Multiplicacao (CasoBase2 "y") (CasoBase2 "x")), Assignment "x" (Diferenca (CasoBase2 "x") (CasoBase 1))]]
+
+exemplo = compile l
+
+
+
+lexer :: String -> [String]
+lexer [] = []
+lexer ('+' : restStr) = "+" : lexer restStr
+lexer ('*' : restStr) = "*" : lexer restStr
+lexer ('-' : restStr) = "-" : lexer restStr
+lexer ('(' : restStr) = "(" : lexer restStr
+lexer (')' : restStr) = ")" : lexer restStr
+
+
+lexer (';' : rest) = ";" : lexer rest
+lexer (':' : '=' : rest) = ":=" : lexer rest
+lexer ('<' : '=' : rest) = "<=" : lexer rest
+lexer ('=' : '=' : rest) = "==" : lexer rest
+lexer ('=' : rest) = "=" : lexer rest
+
+-- If statements
+lexer ('i' : 'f' : rest) = "if" : lexer rest
+lexer ('t' : 'h' : 'e': 'n' : rest) = "then" : lexer rest
+lexer ('e' : 'l' : 's': 'e' : rest) = "else" : lexer rest
+
+-- Boolean operations
+lexer ('n' : 'o' : 't': rest) = "not" : lexer rest
+lexer ('a' : 'n' : 'd': rest) = "and" : lexer rest
+
+-- While loops
+lexer ('w' : 'h' : 'i': 'l': 'e' : rest) = "while" : lexer rest
+lexer ('d' : 'o' : rest) = "do" : lexer rest
+
+-- Boolean values
+lexer ('T' : 'r' : 'u': 'e' : rest) = "true" : lexer rest
+lexer ('F' : 'a' : 'l': 's': 'e' : rest) = "false" : lexer rest
+
+-- Space
+lexer (chr : rest)
+    | isSpace chr
+    = lexer rest
+
+-- Integer values
+lexer str@(chr : _)
+    | isDigit chr
+    = integer : lexer rest
+    where
+      (integer, rest) = span isDigit str
+
+-- Variables
+lexer str@(chr : _)
+    | isLower chr
+    = variable : lexer rest
+    where
+      (variable, rest) = span isVariable str
+      isVariable :: Char -> Bool
+      isVariable c = not (isSpace c) && isAlphaNum c && c `notElem` ['+', '-', '*', ':', '=', ';', '<', ')', '(']
+
+
+l1 = lexer "y := 1; while not (x = 1) do (y := y * x; x := x - 1)"
+l2 = lexer "x := 2; y := (x - 3)*(4 + 2*3); z := x +x*(2);"
+
+-- testParser "x := 2; y := (x - 3)*(4 + 2*3); z := x +x*(2);" == ("","x=2,y=-10,z=6")
+
+-- parse :: String -> Program
+parse = undefined -- TODO
+
+-- To help you test your parser
+testParser :: String -> (String, String)
+testParser programCode = (stack2Str stack, state2Str state)
+  where (_,stack,state) = run (compile (parse programCode), createEmptyStack, createEmptyState)
+
+-- Examples:
+-- testParser "x := 5; x := x - 1;" == ("","x=4")
+-- testParser "x := 0 - 2;" == ("","x=-2")
+-- testParser "if (not True and 2 <= 5 = 3 == 4) then x :=1; else y := 2;" == ("","y=2")
+-- testParser "x := 42; if x <= 43 then x := 1; else (x := 33; x := x+1;);" == ("","x=1")
+-- testParser "x := 42; if x <= 43 then x := 1; else x := 33; x := x+1;" == ("","x=2")
+-- testParser "x := 42; if x <= 43 then x := 1; else x := 33; x := x+1; z := x+x;" == ("","x=2,z=4")
+-- testParser "x := 44; if x <= 43 then x := 1; else (x := 33; x := x+1;); y := x*2;" == ("","x=34,y=68")
+-- testParser "x := 42; if x <= 43 then (x := 33; x := x+1;) else x := 1;" == ("","x=34")
+-- testParser "if (1 == 0+1 = 2+1 == 3) then x := 1; else x := 2;" == ("","x=1")
+-- testParser "if (1 == 0+1 = (2+1 == 4)) then x := 1; else x := 2;" == ("","x=2")
+-- testParser "x := 2; y := (x - 3)*(4 + 2*3); z := x +x*(2);" == ("","x=2,y=-10,z=6")
+-- testParser "i := 10; fact := 1; while (not(i == 1)) do (fact := fact * i; i := i - 1;);" == ("","fact=3628800,i=1")
