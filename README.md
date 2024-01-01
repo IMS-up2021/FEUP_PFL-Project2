@@ -68,3 +68,37 @@ This project involves creating a virtual machine and a compiler for a simple imp
 testAssembler [Push 3, Push 4, Add, Store "result", Noop]
 ```
 - Pushes 3 and 4 onto the stack, adds them, stores the result in the state.
+
+### Lexer
+The lexer function is a lexical analyzer that converts a string into a list of tokens. Tokens include arithmetic operators, parentheses, semicolons, assignment operators, comparison operators, keywords (if, then, else, not, and, while, do), boolean values (true, false), integers, and variables.
+
+#### Examples
+Ex.1:
+```haskell
+y := 1; while not (x = 1) do (y := y * x; x := x - 1)
+```
+- This is lexed into a list of tokens l1.
+
+Ex.2:
+```haskell
+x := 2; y := (x - 3)*(4 + 2*3); z := x + x*(2);
+```
+- This is lexed into a list of tokens l2.
+
+### Parser (Not Implemented yet)
+The provided lexer can be used as a foundation for implementing a parser. A parser would be responsible for converting the list of tokens into a structured representation of the program. This representation could be an abstract syntax tree (AST) that corresponds to the syntax and structure of the imperative programming language.
+
+### Compiler
+The compile function takes a program (represented as a list of statements) and translates it into machine instructions. It uses helper functions compA and compB for compiling arithmetic and boolean expressions, respectively.
+
+#### Example Compilation
+```haskell
+compile l1
+```
+- Compiles the first example program (l1) into a list of machine instructions.
+
+### Conclusion
+- The project demonstrates the implementation of a simple programming language interpreter and compiler, providing insights into lexing, parsing, and execution of imperative programs.
+- While the current implementation is limited in its scope, it serves as a foundational structure that can be extended to support additional language features, optimizations, and error handling.
+- Further development could involve enhancing the parser to construct an abstract syntax tree (AST), enabling more sophisticated analyses and optimizations.
+- In summary, this project serves as a practical exploration of language processing concepts and provides a starting point for more advanced language development and compiler construction. The codebase can be expanded and refined to accommodate richer language constructs and optimizations, offering a valuable learning experience in the realm of language design and implementation.
