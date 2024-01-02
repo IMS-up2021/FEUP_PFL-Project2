@@ -6,6 +6,9 @@ import System.IO
 
 import Data.Char
 
+import Text.Parsec hiding (State)
+import Text.Parsec.String
+
 
 
 -- Part 1
@@ -114,12 +117,6 @@ data Stm =
 
 type Program = [Stm]
 
--- 2 + 3 * 4
-tree = Soma (CasoBase 2) (Multiplicacao (CasoBase 3) (CasoBase 4))
-
--- True = not True
-arvore = Igual1 (Folha True) (Not2 (Folha True))
-
 compile :: Program -> Code
 compile [] = []
 compile (Assignment var exp : restantesStatement) = compA exp ++ [Store var] ++ compile restantesStatement
@@ -145,23 +142,6 @@ compA (CasoBase2 var) = [Fetch var]
 compA (Multiplicacao left right) = compA right ++ compA left ++ [Mult]
 compA (Soma left right) = compA right ++ compA left ++ [Add]
 compA (Diferenca left right) = compA right ++ compA left ++ [Sub]
-
-
-compiled = compA tree
-
-test = testAssembler compiled
-
-
-compiled2 = compB arvore
-
-test2 = run (compiled2, createEmptyStack, createEmptyState)
-
--- y := 1; while ¬(x = 1) do (y := y ∗ x; x := x − 1)
-
-l = [Assignment "y" (CasoBase 1),Loop2 (Not2 (Igual2 (CasoBase2 "x") (CasoBase 1))) [Assignment "y" (Multiplicacao (CasoBase2 "y") (CasoBase2 "x")), Assignment "x" (Diferenca (CasoBase2 "x") (CasoBase 1))]]
-
-exemplo = compile l
-
 
 
 lexer :: String -> [String]
@@ -218,18 +198,25 @@ lexer str@(chr : _)
       isVariable c = not (isSpace c) && isAlphaNum c && c `notElem` ['+', '-', '*', ':', '=', ';', '<', ')', '(']
 
 
-l1 = lexer "y := 1; while not (x = 1) do (y := y * x; x := x - 1)"
-l2 = lexer "x := 2; y := (x - 3)*(4 + 2*3); z := x +x*(2);"
-
--- testParser "x := 2; y := (x - 3)*(4 + 2*3); z := x +x*(2);" == ("","x=2,y=-10,z=6")
+divide :: [String] -> [[String]]
+divide [] = []
+divide list =
+  let (before, after) = break (== ";") list
+  in case after of
+    [] -> [before]
+    (_:rest) -> before : divide rest
 
 -- parse :: String -> Program
-parse = undefined -- TODO
+parse :: String -> Program
+--parse input = buildData (divide (lexer input))
+parse = undefined 
 
 -- To help you test your parser
 testParser :: String -> (String, String)
 testParser programCode = (stack2Str stack, state2Str state)
-  where (_,stack,state) = run (compile (parse programCode), createEmptyStack, createEmptyState)
+  where (_,stack,state) = run (compile (Main.parse programCode), createEmptyStack, createEmptyState)
+
+
 
 -- Examples:
 -- testParser "x := 5; x := x - 1;" == ("","x=4")
